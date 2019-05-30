@@ -22,6 +22,8 @@ using System.IO;
 using System.Collections.Generic;
 using System.Drawing.Design;
 
+// ReSharper disable InconsistentNaming
+
 namespace ImageGlass.ImageListView
 {
     /// <summary>
@@ -30,6 +32,9 @@ namespace ImageGlass.ImageListView
     [TypeConverter(typeof(ImageListViewItemTypeConverter))]
     public class ImageListViewItem : ICloneable
     {
+	    // [IG_CHANGE] Cache often repeated strings, e.g. extensions, directory path
+        private static readonly StringCache _stringCache = new StringCache();
+
         #region Member Variables
         // Property backing fields
         internal int mIndex;
@@ -102,7 +107,7 @@ namespace ImageGlass.ImageListView
         {
             get
             {
-                if (owner == null || owner.FocusedItem == null) return false;
+                if (owner?.FocusedItem == null) return false;
                 return (this == owner.FocusedItem);
             }
             set
@@ -250,7 +255,8 @@ namespace ImageGlass.ImageListView
 
                     if (string.IsNullOrEmpty(mText))
                         mText = Path.GetFileName(mFileName);
-                    extension = Path.GetExtension(mFileName);
+					// [IG_CHANGE] use string cache
+                    extension = _stringCache.GetFromCache(Path.GetExtension(mFileName));
 
                     isDirty = true;
                     if (mImageListView != null)
@@ -511,7 +517,8 @@ namespace ImageGlass.ImageListView
             : this()
         {
             mFileName = filename;
-            extension = Path.GetExtension(filename);
+			// [IG_CHANGE] use string cache
+            extension = _stringCache.GetFromCache(Path.GetExtension(filename));
             if (string.IsNullOrEmpty(text))
                 text = Path.GetFileName(filename);
             mText = text;
@@ -556,7 +563,7 @@ namespace ImageGlass.ImageListView
         /// </summary>
         public void BeginEdit()
         {
-            if (editing == true)
+            if (editing)
                 throw new InvalidOperationException("Already editing this item.");
 
             if (mImageListView == null)
@@ -1073,7 +1080,7 @@ namespace ImageGlass.ImageListView
                 return;
             }
 
-            Utility.Tuple<int, string> groupInfo = new Utility.Tuple<int, string>(0, string.Empty);
+            Utility.Tuple<int, string> groupInfo;
 
             switch (column.Type)
             {
